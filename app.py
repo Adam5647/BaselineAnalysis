@@ -13,7 +13,7 @@ st.title("📊 Baseline Survey Analysis Dashboard")
 
 def load_data():
     df = pd.read_excel("BaselineCombined.xlsx", sheet_name="Combined")
-    df['Remark'] = df['Remark'].astype(str).lower().str.strip()
+    df['Remark'] = df['Remark'].astype(str).str.lower().str.strip()
     df['Question'] = df['Question'].astype(str).str.strip()
     df['Responses'] = df['Responses'].astype(str).str.strip()
     df['Participant'] = df['District'].astype(str) + " - " + df['Name'].astype(str)
@@ -180,8 +180,9 @@ with tab4:
 
         if st.button("🔍 Generate Insight with LLaMA"):
             try:
+                # Updated URL for the exposed Ollama model via Ngrok
                 response = requests.post(
-                    "http://localhost:11434/api/generate",
+                    "https://44bd-2405-201-ac0b-e0cb-a4f0-149d-8b8-1220.ngrok-free.app/api/generate",
                     json={"model": "mistral", "prompt": prompt, "stream": False},
                     timeout=60
                 )
