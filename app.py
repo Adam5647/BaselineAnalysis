@@ -6,7 +6,7 @@ import requests
 
 # Set Streamlit page layout
 st.set_page_config(layout="wide")
-st.title("📊 Baseline Survey Analysis Dashboard")
+st.title("Baseline Survey Analysis Dashboard")
 
 # Load data
 @st.cache_data
@@ -35,16 +35,17 @@ knowledge_df = filtered_df[filtered_df['Remark'].isin(['correct', 'incorrect'])]
 subjective_df = filtered_df[~filtered_df['Remark'].isin(['correct', 'incorrect'])]
 
 # Tabs
-tab1, tab2, tab3, tab4 = st.tabs([
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "Knowledge-Based Analysis",
     "Open-Ended / Subjective",
     "Most Selected Options",
-    "🧠 AI Insights with LLaMA Mistral"
+    "AI Insights with Ban's Integrated LLM",
+    "AI Insights District Wise"
 ])
 
 # Tab 1: Knowledge-Based
 with tab1:
-    st.subheader("✅ Knowledge-Based Questions (Correct vs Incorrect)")
+    st.subheader("Knowledge-Based Questions (Correct vs Incorrect)")
 
     # District-level summary
     district_summary = knowledge_df.groupby(['District', 'Remark']).size().unstack(fill_value=0)
@@ -52,10 +53,10 @@ with tab1:
     district_summary['% Correct'] = (district_summary.get('correct', 0) / district_summary['Total']) * 100
     district_summary['% Incorrect'] = (district_summary.get('incorrect', 0) / district_summary['Total']) * 100
 
-    st.write("### District-wise Summary")
+    st.write("District-wise Summary")
     st.dataframe(district_summary.style.format("{:.2f}"))
 
-    st.write("### Correct vs Incorrect (District-wise)")
+    st.write("Correct vs Incorrect (District-wise)")
     fig1, ax1 = plt.subplots(figsize=(10, 5))
     district_summary[['correct', 'incorrect']].plot(kind='bar', stacked=True, ax=ax1, color=["#4CAF50", "#F44336"])
     ax1.set_ylabel("Number of Responses")
@@ -63,7 +64,7 @@ with tab1:
     st.pyplot(fig1)
 
     # Question-level summary
-    st.write("### Question-wise Summary")
+    st.write("Question-wise Summary")
     q_summary = knowledge_df.groupby(['Question', 'Remark']).size().unstack(fill_value=0)
     q_summary['Total'] = q_summary.sum(axis=1)
     q_summary['% Correct'] = (q_summary.get('correct', 0) / q_summary['Total']) * 100
@@ -73,7 +74,7 @@ with tab1:
     col1, col2 = st.columns(2)
 
     with col1:
-        st.write("### Question 3: Standing Committees")
+        st.write("Question 3: Standing Committees")
         q3_text = "3. What are the standing committees that must be in place in Gram Panchayats? [Mark all the correct answers]"
         correct_q3 = {
             "3. General Standing Committee",
@@ -88,7 +89,7 @@ with tab1:
         st.dataframe(grouped_q3.set_index('Participant').style.format({"% Correct Selections": "{:.2f}"}))
 
     with col2:
-        st.write("### Question 6: Sources of Finance")
+        st.write("Question 6: Sources of Finance")
         q6_text = "6. What are the sources of finance for the Gram Panchayat? [Select all correct answers]"
         correct_q6 = {
             "6. Central government grants under schemes like MGNREGS.",
@@ -111,13 +112,13 @@ with tab1:
 
 # Tab 2: Open-ended/Subjective
 with tab2:
-    st.subheader("🗣️ Open-Ended / Subjective Questions")
+    st.subheader("Open-Ended / Subjective Questions")
     question_choice = st.selectbox("Select Question:", subjective_df['Question'].unique())
     selected_q = subjective_df[subjective_df['Question'] == question_choice]
 
     response_counts = selected_q['Responses'].value_counts(normalize=True) * 100
 
-    st.write("### Response Distribution (%)")
+    st.write("Response Distribution (%)")
     st.dataframe(
         response_counts.rename("Percentage")
         .reset_index()
@@ -134,7 +135,7 @@ with tab2:
 
 # Tab 3: Option Frequency for Opinion Questions
 with tab3:
-    st.subheader("📌 Most Chosen Options (General Opinions)")
+    st.subheader("Most Chosen Options (General Opinions)")
     opinion_df = subjective_df.copy()
 
     question_options = opinion_df['Question'].unique()
@@ -143,7 +144,7 @@ with tab3:
 
     option_counts = selected_data['Responses'].value_counts(normalize=True) * 100
 
-    st.write("### Option Frequency (%)")
+    st.write("Option Frequency (%)")
     st.dataframe(
         option_counts.rename("Percentage")
         .reset_index()
@@ -160,7 +161,7 @@ with tab3:
 
 # Tab 4: AI Insights
 with tab4:
-    st.subheader("🧠 AI Insights with LLaMA Mistral")
+    st.subheader("AI Insights with Ban's Integrated LLM")
     participant_selected = st.selectbox("Select Participant (District - Name):", df['Participant'].unique())
     person_df = df[df['Participant'] == participant_selected]
 
@@ -170,15 +171,22 @@ with tab4:
         )
 
         prompt = (
-            f"You are an expert data analyst. Analyze the following responses by a survey participant and provide a summary "
-            f"that includes their general knowledge, opinions, and understanding level. Be concise and insightful.\n\n"
+            "You are an expert data analyst with strong quantitative skills. Analyze the following survey responses "
+            "from a participant and generate a detailed report. Your analysis should include:\n"
+            "1. A concise summary of the participant's general knowledge and opinions.\n"
+            "2. A breakdown of the responses, including percentage estimates where applicable (e.g., what percent "
+            "of the responses indicate correct or positive understanding).\n"
+            "3. Detailed observations on clarity, insight, and any notable patterns in the participant's answers.\n"
+            "4. Actionable recommendations or conclusions if appropriate.\n\n"
+            "Please provide your response in a structured, easy-to-read format, including numerical percentages "
+            "and key insight points.\n\n"
             f"{all_answers}"
         )
 
-        st.write("### Raw Participant Responses")
+        st.write("Raw Participant Responses")
         st.code(all_answers, language="text")
 
-        if st.button("🔍 Generate Insight with LLaMA"):
+        if st.button("Generate Insight"):
             try:
                 # Updated URL for the exposed Ollama model via Ngrok
                 response = requests.post(
@@ -189,6 +197,60 @@ with tab4:
                 if response.status_code == 200:
                     result = response.json()
                     st.success("Insight generated successfully:")
+                    st.markdown(result.get("response", "No response returned."))
+                else:
+                    st.error(f"LLaMA API returned an error: {response.status_code}\n{response.text}")
+            except Exception as e:
+                st.error(f"Failed to connect to LLaMA: {e}")
+
+with tab5:
+    st.subheader("AI Insights District Wise")
+    district_choice = st.selectbox("Select District:", df['District'].unique())
+    district_df = df[df['District'] == district_choice]
+
+    if not district_df.empty:
+        # Knowledge stats
+        knowledge_district_df = district_df[district_df['Remark'].isin(['correct', 'incorrect'])]
+        total_knowledge_responses = len(knowledge_district_df)
+        correct = (knowledge_district_df['Remark'] == 'correct').sum()
+        incorrect = (knowledge_district_df['Remark'] == 'incorrect').sum()
+
+        percent_correct = (correct / total_knowledge_responses * 100) if total_knowledge_responses else 0
+        percent_incorrect = (incorrect / total_knowledge_responses * 100) if total_knowledge_responses else 0
+
+        # Subjective stats
+        subjective_district_df = district_df[~district_df['Remark'].isin(['correct', 'incorrect'])]
+        subjective_summary = subjective_district_df.groupby('Question')['Responses'].value_counts().groupby(level=0).head(2)
+
+        insight_input = (
+            f"District Name: {district_choice}\n"
+            f"Number of Knowledge-Based Responses: {total_knowledge_responses}\n"
+            f"Correct Answers: {correct} ({percent_correct:.2f}%)\n"
+            f"Incorrect Answers: {incorrect} ({percent_incorrect:.2f}%)\n\n"
+            f"Most Common Subjective Responses (Top 2 per Question):\n{subjective_summary.to_string()}\n"
+        )
+
+        prompt_district = (
+            "You are a data analyst. Analyze this summarized district-level survey data and provide insights:\n"
+            "1. General knowledge level among respondents.\n"
+            "2. Response behavior trends and dominant themes.\n"
+            "3. Suggestions for improving engagement or understanding.\n\n"
+            f"{insight_input}"
+        )
+
+        st.write("District Summary Sent to LLM:")
+        st.code(insight_input, language="text")
+
+        if st.button("Generate District-Wise Insight"):
+            try:
+                response = requests.post(
+                    "https://44bd-2405-201-ac0b-e0cb-a4f0-149d-8b8-1220.ngrok-free.app/api/generate",
+                    json={"model": "mistral", "prompt": prompt_district, "stream": False},
+                    timeout=60
+                )
+                if response.status_code == 200:
+                    result = response.json()
+                    st.success("District-wise insight generated successfully:")
                     st.markdown(result.get("response", "No response returned."))
                 else:
                     st.error(f"LLaMA API returned an error: {response.status_code}\n{response.text}")
