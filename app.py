@@ -39,7 +39,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "Knowledge-Based Analysis",
     "Open-Ended / Subjective",
     "Most Selected Options",
-    "AI Insights with Ban's Integrated LLM",
+    "AI Insights with LLM",
     "AI Insights District Wise"
 ])
 
@@ -161,7 +161,7 @@ with tab3:
 
 # Tab 4: AI Insights (Per Participant)
 with tab4:
-    st.subheader("🤖 AI Insights (Per Participant)")
+    st.subheader("AI Insights (Per Participant)")
 
     participant_selected = st.selectbox("Select Participant (District - Name):", df['Participant'].unique())
     person_df = df[df['Participant'] == participant_selected]
