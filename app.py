@@ -159,49 +159,74 @@ with tab3:
     ax3.set_title("Most Chosen Options")
     st.pyplot(fig3)
 
-# Tab 4: AI Insights
+# Tab 4: AI Insights (Per Participant)
 with tab4:
-    st.subheader("AI Insights with Ban's Integrated LLM")
+    st.subheader("🤖 AI Insights (Per Participant)")
+
     participant_selected = st.selectbox("Select Participant (District - Name):", df['Participant'].unique())
     person_df = df[df['Participant'] == participant_selected]
 
     if not person_df.empty:
-        all_answers = "\n".join(
-            f"Q: {row['Question']}\nA: {row['Responses']}" for _, row in person_df.iterrows()
-        )
+        qna_blocks = []
+        q13_subparts = {}
 
+        for _, row in person_df.iterrows():
+            question = row["Question"].strip()
+            response = row["Responses"].strip()
+
+            # Group all Q13 parts together
+            if question.startswith("13.") and "How comfortable" in question:
+                q13_subparts[question] = response
+            else:
+                qna_blocks.append(f"Q: {question}\nA: {response}")
+
+        # Add grouped Question 13 block (if exists)
+        if q13_subparts:
+            qna_blocks.append("Q: 13. How comfortable are you speaking in different contexts?\nA:")
+            for sub_q, resp in sorted(q13_subparts.items()):
+                label = sub_q.split("13.")[-1].strip().rstrip(":")
+                qna_blocks.append(f"- [{label}] {resp}")
+
+        all_answers = "\n".join(qna_blocks)
+
+        # Smart truncate if overly long
+        MAX_WORDS = 3000
+        words = all_answers.split()
+        if len(words) > MAX_WORDS:
+            all_answers = " ".join(words[:MAX_WORDS]) + "\n\n... [truncated for processing]"
+
+        # Optimized prompt
         prompt = (
-            "You are an expert data analyst with strong quantitative skills. Analyze the following survey responses "
-            "from a participant and generate a detailed report. Your analysis should include:\n"
-            "1. A concise summary of the participant's general knowledge and opinions.\n"
-            "2. A breakdown of the responses, including percentage estimates where applicable (e.g., what percent "
-            "of the responses indicate correct or positive understanding).\n"
-            "3. Detailed observations on clarity, insight, and any notable patterns in the participant's answers.\n"
-            "4. Actionable recommendations or conclusions if appropriate.\n\n"
-            "Please provide your response in a structured, easy-to-read format, including numerical percentages "
-            "and key insight points.\n\n"
+            "You are a data analyst. Summarize this participant's survey responses.\n"
+            "Focus on:\n"
+            "- Their understanding of governance and panchayat systems\n"
+            "- Communication with officials and citizens\n"
+            "- Confidence and engagement, especially as a female member\n"
+            "- Patterns or contradictions in responses\n"
+            "- Key insights and improvement recommendations\n\n"
+            "Give concise bullet-point observations with estimated percentages if relevant.\n\n"
             f"{all_answers}"
         )
 
-        st.write("Raw Participant Responses")
+        st.write("📝 Responses Sent to LLM:")
         st.code(all_answers, language="text")
 
         if st.button("Generate Insight"):
             try:
-                # Updated URL for the exposed Ollama model via Ngrok
                 response = requests.post(
                     "https://3bd9-2405-201-ac0b-e0cb-c519-7dd-6c6e-8ede.ngrok-free.app/api/generate",
                     json={"model": "mistral", "prompt": prompt, "stream": False},
-                    timeout=60
+                    timeout=120
                 )
                 if response.status_code == 200:
                     result = response.json()
-                    st.success("Insight generated successfully:")
-                    st.markdown(result.get("response", "No response returned."))
+                    st.success("✅ Insight generated successfully!")
+                    st.markdown(result.get("response", "⚠️ No response returned."))
                 else:
-                    st.error(f"LLaMA API returned an error: {response.status_code}\n{response.text}")
+                    st.error(f"❌ LLaMA API returned status {response.status_code}\n{response.text}")
             except Exception as e:
-                st.error(f"Failed to connect to LLaMA: {e}")
+                st.error(f"🔌 Connection error:\n{str(e)}")
+
 
 with tab5:
     st.subheader("AI Insights District Wise")
