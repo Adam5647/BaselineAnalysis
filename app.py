@@ -190,7 +190,7 @@ with tab4:
             try:
                 # Updated URL for the exposed Ollama model via Ngrok
                 response = requests.post(
-                    "https://44bd-2405-201-ac0b-e0cb-a4f0-149d-8b8-1220.ngrok-free.app/api/generate",
+                    "https://3bd9-2405-201-ac0b-e0cb-c519-7dd-6c6e-8ede.ngrok-free.app/api/generate",
                     json={"model": "mistral", "prompt": prompt, "stream": False},
                     timeout=60
                 )
